@@ -3,17 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FlowVibe - RealTime</title>
+  <title>FlowVibe</title>
+  <link rel="icon" href="favicon.png" type="image/png">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      background: linear-gradient(135deg, #1a1a1a, #2c2c2c);
+      background: #2c2c2c;
       font-family: 'Poppins', sans-serif;
       overflow: hidden;
       color: #fff;
       position: relative;
     }
-    canvas { display: block; width: 100%; height: 100vh; }
+    canvas {
+      display: block;
+      position: absolute;
+      top: 0; left: 0;
+      z-index: 1;
+    }
     #ui {
       position: fixed;
       bottom: 5vh;
@@ -25,15 +34,18 @@
       z-index: 10;
       width: 90%;
       max-width: 600px;
+      background: rgba(0,0,0,0.6);
+      padding: 10px;
+      border-radius: 20px;
     }
     input {
+      flex: 1;
       padding: 1.2vh;
-      width: 70%;
       background: rgba(0, 0, 0, 0.7);
       border: 2px solid #ff00ff;
       border-radius: 25px;
       color: #00f6ff;
-      font-size: clamp(14px, 2.5vw, 16px);
+      font-size: 1rem;
       outline: none;
       transition: all 0.3s ease;
       box-shadow: 0 0 10px #ff00ff;
@@ -43,53 +55,54 @@
       border-color: #00f6ff;
     }
     button {
-      padding: 1.2vh 2.5vw;
+      padding: 0.8em 1.2em;
       background: linear-gradient(45deg, #ff00ff, #00f6ff);
       border: none;
       border-radius: 25px;
       color: #000;
       font-weight: bold;
-      font-size: clamp(14px, 2.5vw, 16px);
+      font-size: 1rem;
       cursor: pointer;
-      transition: transform 0.2s ease;
       box-shadow: 0 0 15px #ff00ff;
     }
-    button:hover {
-      transform: scale(1.1);
-      box-shadow: 0 0 25px #00f6ff;
-    }
     #share {
-      padding: 1vh;
       background: #fff;
       color: #000;
       border-radius: 50%;
       cursor: pointer;
-      font-size: clamp(14px, 2.5vw, 16px);
-      transition: all 0.3s ease;
+      padding: 0.5em;
       box-shadow: 0 0 10px #00f6ff;
     }
-    #share:hover {
-      background: #ff00ff;
-      color: #fff;
+    @media (max-width: 600px) {
+      #ui {
+        flex-direction: column;
+        gap: 10px;
+        bottom: 2vh;
+      }
     }
   </style>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
-
+</head>
+<body>
+  <canvas id="screen"></canvas>
+  <div id="ui">
+    <input id="input" type="text" placeholder="Drop your vibe!">
+    <button onclick="send()">VIBE</button>
+    <div id="share" onclick="navigator.clipboard.writeText(location.href).then(() => alert('Link copied!'))">📢</div>
+  </div>
+  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyCRmfI0ET6s8l3HLtUxNZ2jD-Q0u5Xlv0I",
       authDomain: "flowvibeflowvibe.firebaseapp.com",
       projectId: "flowvibeflowvibe",
+      databaseURL: "https://flowvibeflowvibe-default-rtdb.firebaseio.com",
       storageBucket: "flowvibeflowvibe.firebasestorage.app",
       messagingSenderId: "162683611275",
-      appId: "1:162683611275:web:e9d530b92ece7c46a88c8e",
-      databaseURL: "https://flowvibeflowvibe-default-rtdb.firebaseio.com"
+      appId: "1:162683611275:web:e9d530b92ece7c46a88c8e"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const commentsRef = ref(db, 'comments');
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const commentsRef = db.ref('comments');
 
     const canvas = document.getElementById('screen');
     const ctx = canvas.getContext('2d');
@@ -100,26 +113,31 @@
     let comments = [];
     let particles = [];
 
-    window.send = function () {
+    function send() {
       const text = input.value.trim();
       if (!text) return;
-      push(commentsRef, { text });
+      commentsRef.push({ text });
       input.value = '';
-    };
+    }
 
-    onChildAdded(commentsRef, (snapshot) => {
+    commentsRef.on('child_added', (snapshot) => {
       const data = snapshot.val();
       const baseSpeed = 2;
+      const hue = Math.floor(Math.random() * 360);
       comments.push({
         text: data.text,
         x: canvas.width,
-        y: Math.random() * (canvas.height - 100) + 50,
-        color: `hsl(${Math.random() * 360}, 80%, 70%)`,
+        y: Math.random() * (canvas.height - 150),
+        color: `hsl(${hue}, 100%, 70%)`,
         speed: baseSpeed * (data.text.length * 0.1 + 0.5),
         opacity: 1,
         glitch: data.text.length > 10 ? 0.1 : 0,
       });
     });
+
+    function clamp(min, val, max) {
+      return Math.min(Math.max(val, min), max);
+    }
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -177,25 +195,14 @@
       requestAnimationFrame(draw);
     }
 
-    function clamp(min, val, max) {
-      return Math.min(Math.max(val, min), max);
-    }
-
     draw();
     window.addEventListener('resize', () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      document.getElementById('ui').style.bottom = '5vh';
+    });
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') send();
     });
   </script>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
-</head>
-<body>
-  <canvas id="screen"></canvas>
-  <div id="ui">
-    <input id="input" type="text" placeholder="Drop your vibe!">
-    <button onclick="send()">VIBE</button>
-    <div id="share" onclick="navigator.clipboard.writeText(location.href).then(() => alert('Link copied!'))">📢</div>
-  </div>
 </body>
 </html>
