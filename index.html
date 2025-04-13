@@ -3,13 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FlowVibe</title>
+  <title>FlowVibe - RealTime</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       background: linear-gradient(135deg, #1a1a1a, #2c2c2c);
       font-family: 'Poppins', sans-serif;
@@ -17,11 +13,7 @@
       color: #fff;
       position: relative;
     }
-    canvas {
-      display: block;
-      width: 100%;
-      height: 100vh;
-    }
+    canvas { display: block; width: 100%; height: 100vh; }
     #ui {
       position: fixed;
       bottom: 5vh;
@@ -80,30 +72,25 @@
       background: #ff00ff;
       color: #fff;
     }
-    /* Y2K風背景ノイズ */
-    body::before {
-      content: '';
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAAXNSR0IArs4c6QAAABZJREFUCB1jYGBg+M8ABM5gDEwG4gUA6ycCE8gB7yIAAAAASUVORK5CYII=') repeat;
-      opacity: 0.1;
-      z-index: 0;
-    }
   </style>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
-</head>
-<body>
-  <canvas id="screen"></canvas>
-  <div id="ui">
-    <input id="input" type="text" placeholder="Drop your vibe!">
-    <button onclick="send()">VIBE</button>
-    <div id="share" onclick="shareVibe()">📢</div>
-  </div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCRmfI0ET6s8l3HLtUxNZ2jD-Q0u5Xlv0I",
+      authDomain: "flowvibeflowvibe.firebaseapp.com",
+      projectId: "flowvibeflowvibe",
+      storageBucket: "flowvibeflowvibe.firebasestorage.app",
+      messagingSenderId: "162683611275",
+      appId: "1:162683611275:web:e9d530b92ece7c46a88c8e",
+      databaseURL: "https://flowvibeflowvibe-default-rtdb.firebaseio.com"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const commentsRef = ref(db, 'comments');
+
     const canvas = document.getElementById('screen');
     const ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
@@ -113,41 +100,37 @@
     let comments = [];
     let particles = [];
 
-    function send() {
+    window.send = function () {
       const text = input.value.trim();
       if (!text) return;
+      push(commentsRef, { text });
+      input.value = '';
+    };
+
+    onChildAdded(commentsRef, (snapshot) => {
+      const data = snapshot.val();
       const baseSpeed = 2;
       comments.push({
-        text,
+        text: data.text,
         x: canvas.width,
         y: Math.random() * (canvas.height - 100) + 50,
         color: `hsl(${Math.random() * 360}, 80%, 70%)`,
-        speed: baseSpeed * (text.length * 0.1 + 0.5), // 長いほど速く
+        speed: baseSpeed * (data.text.length * 0.1 + 0.5),
         opacity: 1,
-        glitch: text.length > 10 ? 0.1 : 0, // 長いコメントにグリッチ
+        glitch: data.text.length > 10 ? 0.1 : 0,
       });
-      input.value = '';
-    }
-
-    function shareVibe() {
-      const url = window.location.href;
-      const text = "Check out my Y2K vibe on FlowVibe! 🌈 #FlowVibe";
-      navigator.clipboard.writeText(`${text} ${url}`);
-      alert("Link copied! Share it on social media!");
-    }
+    });
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.font = `${clamp(18, window.innerWidth * 0.03, 24)}px Poppins`;
 
-      // コメント描画
       comments.forEach((c, i) => {
         ctx.globalAlpha = c.opacity;
         ctx.fillStyle = c.color;
         ctx.shadowColor = c.color;
-        ctx.shadowBlur = c.speed * 2; // 速いほどグロー強め
+        ctx.shadowBlur = c.speed * 2;
         let offsetX = c.x;
-        // グリッチエフェクト（長いコメントのみ）
         if (c.glitch && Math.random() < c.glitch) {
           offsetX += (Math.random() - 0.5) * 10;
           ctx.fillStyle = Math.random() < 0.5 ? '#ff00ff' : '#00f6ff';
@@ -155,7 +138,6 @@
         ctx.fillText(c.text, offsetX, c.y);
         c.x -= c.speed;
 
-        // パーティクル生成
         if (Math.random() < 0.2) {
           particles.push({
             x: c.x + ctx.measureText(c.text).width,
@@ -168,7 +150,6 @@
           });
         }
 
-        // 左端でフェードアウト
         if (c.x < -ctx.measureText(c.text).width) {
           c.opacity -= 0.02;
         }
@@ -177,7 +158,6 @@
         }
       });
 
-      // パーティクル描画
       particles.forEach((p, i) => {
         ctx.globalAlpha = p.life / 30;
         ctx.fillStyle = p.color;
@@ -197,7 +177,6 @@
       requestAnimationFrame(draw);
     }
 
-    // clamp関数
     function clamp(min, val, max) {
       return Math.min(Math.max(val, min), max);
     }
@@ -208,9 +187,15 @@
       canvas.height = window.innerHeight;
       document.getElementById('ui').style.bottom = '5vh';
     });
-    input.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') send();
-    });
   </script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <canvas id="screen"></canvas>
+  <div id="ui">
+    <input id="input" type="text" placeholder="Drop your vibe!">
+    <button onclick="send()">VIBE</button>
+    <div id="share" onclick="navigator.clipboard.writeText(location.href).then(() => alert('Link copied!'))">📢</div>
+  </div>
 </body>
 </html>
