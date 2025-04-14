@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FlowVibe</title>
+  <meta name="description" content="FlowVibe is a real-time, anonymous chat platform for teens. No logins, no history — just pure vibes from around the world. Connect instantly and express freely.">
   <link rel="icon" href="favicon.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
@@ -54,7 +55,7 @@
       outline: none;
       box-shadow: 0 0 10px #ff00ff;
     }
-    button, #share {
+    button {
       flex: 2;
       padding: 0.8em;
       background: linear-gradient(45deg, #ff00ff, #00f6ff);
@@ -65,12 +66,19 @@
       font-size: 1rem;
       cursor: pointer;
       box-shadow: 0 0 15px #ff00ff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
     }
     #share {
       flex: 1;
+      background: linear-gradient(45deg, #ff00ff, #00f6ff);
+      color: #000;
+      border-radius: 25px;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0.8em;
+      box-shadow: 0 0 10px #00f6ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     #onlineCount {
       position: fixed;
@@ -104,7 +112,7 @@
       authDomain: "flowvibeflowvibe.firebaseapp.com",
       projectId: "flowvibeflowvibe",
       databaseURL: "https://flowvibeflowvibe-default-rtdb.firebaseio.com",
-      storageBucket: "flowvibeflowvibe.appspot.com",
+      storageBucket: "flowvibeflowvibe.firebasestorage.app",
       messagingSenderId: "162683611275",
       appId: "1:162683611275:web:e9d530b92ece7c46a88c8e"
     };
@@ -122,22 +130,6 @@
     const input = document.getElementById('input');
     let comments = [];
     let particles = [];
-    let hasInitialized = false;
-
-    const greetings = ["Hello", "こんにちは", "Salut", "Hola", "Ciao", "안녕하세요", "مرحبا", "Olá", "Hallo", "नमस्ते", "Привет", "你好", "שלום", "สวัสดี", "Hej"];
-    greetings.forEach((text, i) => {
-      setTimeout(() => {
-        comments.push({
-          text,
-          x: canvas.width,
-          y: Math.random() * (canvas.height - 200) + 100,
-          color: `hsl(${Math.random() * 360}, 100%, 70%)`,
-          speed: 2.5,
-          opacity: 1,
-          glitch: 0,
-        });
-      }, i * 300);
-    });
 
     function send() {
       const text = input.value.trim();
@@ -147,24 +139,19 @@
     }
 
     commentsRef.limitToLast(1).on('child_added', (snapshot) => {
-      if (!hasInitialized) return;
       const data = snapshot.val();
       const baseSpeed = 2;
       const hue = Math.floor(Math.random() * 360);
       comments.push({
         text: data.text,
         x: canvas.width,
-        y: Math.random() * (canvas.height - 200) + 100,
+        y: Math.random() * (canvas.height - 200) + 50,
         color: `hsl(${hue}, 100%, 70%)`,
         speed: baseSpeed * (data.text.length * 0.1 + 0.5),
         opacity: 1,
         glitch: data.text.length > 10 ? 0.1 : 0,
       });
     });
-
-    setTimeout(() => {
-      hasInitialized = true;
-    }, greetings.length * 300 + 1000);
 
     function clamp(min, val, max) {
       return Math.min(Math.max(val, min), max);
@@ -209,15 +196,6 @@
       if (e.key === 'Enter') send();
     });
 
-    // 👤 個人識別IDでユニークカウント
-    let uid = localStorage.getItem("vibeUID");
-    if (!uid) {
-      uid = Math.random().toString(36).slice(2);
-      localStorage.setItem("vibeUID", uid);
-    }
-    db.ref(`dashboard/uniqueUsers/${uid}`).set(true);
-
-    // 👥 同時接続 + 最大人数記録
     const userId = Math.random().toString(36).slice(2);
     const userRef = presenceRef.child(userId);
     firebase.database().ref(".info/connected").on("value", function(snap) {
@@ -228,18 +206,7 @@
     });
 
     presenceRef.on("value", function(snapshot) {
-      const count = snapshot.numChildren();
-      document.getElementById("onlineCount").innerText = `🟢 ${count} online`;
-      db.ref("dashboard/maxOnline").once("value", snap => {
-        if (!snap.exists() || count > snap.val()) {
-          db.ref("dashboard/maxOnline").set(count);
-        }
-      });
-    });
-
-    // 💬 コメント数記録
-    commentsRef.on("child_added", () => {
-      db.ref("dashboard/totalComments").transaction(n => (n || 0) + 1);
+      document.getElementById("onlineCount").innerText = `🟢 ${snapshot.numChildren()} online`;
     });
   </script>
 </body>
