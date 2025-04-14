@@ -54,7 +54,7 @@
       outline: none;
       box-shadow: 0 0 10px #ff00ff;
     }
-    button {
+    button, #share {
       flex: 2;
       padding: 0.8em;
       background: linear-gradient(45deg, #ff00ff, #00f6ff);
@@ -65,19 +65,12 @@
       font-size: 1rem;
       cursor: pointer;
       box-shadow: 0 0 15px #ff00ff;
-    }
-    #share {
-      flex: 1;
-      background: #fff;
-      color: #000;
-      border-radius: 50%;
-      cursor: pointer;
-      font-size: 1rem;
-      padding: 0.8em;
-      box-shadow: 0 0 10px #00f6ff;
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+    #share {
+      flex: 1;
     }
     #onlineCount {
       position: fixed;
@@ -129,6 +122,7 @@
     const input = document.getElementById('input');
     let comments = [];
     let particles = [];
+    let hasInitialized = false;
 
     const greetings = ["Hello", "こんにちは", "Salut", "Hola", "Ciao", "안녕하세요", "مرحبا", "Olá", "Hallo", "नमस्ते", "Привет", "你好", "שלום", "สวัสดี", "Hej"];
     greetings.forEach((text, i) => {
@@ -153,6 +147,7 @@
     }
 
     commentsRef.limitToLast(1).on('child_added', (snapshot) => {
+      if (!hasInitialized) return;
       const data = snapshot.val();
       const baseSpeed = 2;
       const hue = Math.floor(Math.random() * 360);
@@ -166,6 +161,10 @@
         glitch: data.text.length > 10 ? 0.1 : 0,
       });
     });
+
+    setTimeout(() => {
+      hasInitialized = true;
+    }, greetings.length * 300 + 1000);
 
     function clamp(min, val, max) {
       return Math.min(Math.max(val, min), max);
