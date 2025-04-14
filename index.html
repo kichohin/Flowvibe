@@ -104,7 +104,7 @@
       authDomain: "flowvibeflowvibe.firebaseapp.com",
       projectId: "flowvibeflowvibe",
       databaseURL: "https://flowvibeflowvibe-default-rtdb.firebaseio.com",
-      storageBucket: "flowvibeflowvibe.firebasestorage.app",
+      storageBucket: "flowvibeflowvibe.appspot.com",
       messagingSenderId: "162683611275",
       appId: "1:162683611275:web:e9d530b92ece7c46a88c8e"
     };
@@ -209,6 +209,15 @@
       if (e.key === 'Enter') send();
     });
 
+    // 👤 個人識別IDでユニークカウント
+    let uid = localStorage.getItem("vibeUID");
+    if (!uid) {
+      uid = Math.random().toString(36).slice(2);
+      localStorage.setItem("vibeUID", uid);
+    }
+    db.ref(`dashboard/uniqueUsers/${uid}`).set(true);
+
+    // 👥 同時接続 + 最大人数記録
     const userId = Math.random().toString(36).slice(2);
     const userRef = presenceRef.child(userId);
     firebase.database().ref(".info/connected").on("value", function(snap) {
@@ -219,7 +228,18 @@
     });
 
     presenceRef.on("value", function(snapshot) {
-      document.getElementById("onlineCount").innerText = `🟢 ${snapshot.numChildren()} online`;
+      const count = snapshot.numChildren();
+      document.getElementById("onlineCount").innerText = `🟢 ${count} online`;
+      db.ref("dashboard/maxOnline").once("value", snap => {
+        if (!snap.exists() || count > snap.val()) {
+          db.ref("dashboard/maxOnline").set(count);
+        }
+      });
+    });
+
+    // 💬 コメント数記録
+    commentsRef.on("child_added", () => {
+      db.ref("dashboard/totalComments").transaction(n => (n || 0) + 1);
     });
   </script>
 </body>
