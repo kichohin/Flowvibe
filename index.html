@@ -29,8 +29,8 @@
       left: 50%;
       transform: translateX(-50%);
       display: flex;
-      gap: 2vw;
-      align-items: center;
+      flex-direction: column;
+      gap: 0.5em;
       z-index: 10;
       width: 90%;
       max-width: 600px;
@@ -38,24 +38,25 @@
       padding: 10px;
       border-radius: 20px;
     }
-    input {
-      flex: 1;
-      padding: 1.2vh;
+    .row {
+      display: flex;
+      width: 100%;
+      gap: 1vw;
+    }
+    #input {
+      flex: 3;
+      padding: 1em;
       background: rgba(0, 0, 0, 0.7);
       border: 2px solid #ff00ff;
       border-radius: 25px;
       color: #00f6ff;
       font-size: 1rem;
       outline: none;
-      transition: all 0.3s ease;
       box-shadow: 0 0 10px #ff00ff;
     }
-    input:focus {
-      box-shadow: 0 0 20px #00f6ff;
-      border-color: #00f6ff;
-    }
     button {
-      padding: 0.8em 1.2em;
+      flex: 2;
+      padding: 0.8em;
       background: linear-gradient(45deg, #ff00ff, #00f6ff);
       border: none;
       border-radius: 25px;
@@ -66,12 +67,17 @@
       box-shadow: 0 0 15px #ff00ff;
     }
     #share {
+      flex: 1;
       background: #fff;
       color: #000;
       border-radius: 50%;
       cursor: pointer;
-      padding: 0.5em;
+      font-size: 1rem;
+      padding: 0.8em;
       box-shadow: 0 0 10px #00f6ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     #onlineCount {
       position: fixed;
@@ -85,21 +91,18 @@
       color: #00f6ff;
       box-shadow: 0 0 10px #00f6ff;
     }
-    @media (max-width: 600px) {
-      #ui {
-        flex-direction: column;
-        gap: 10px;
-        bottom: 2vh;
-      }
-    }
   </style>
 </head>
 <body>
   <canvas id="screen"></canvas>
   <div id="ui">
-    <input id="input" type="text" placeholder="Drop your vibe!">
-    <button onclick="send()">VIBE</button>
-    <div id="share" onclick="navigator.clipboard.writeText(location.href).then(() => alert('Link copied!'))">📢</div>
+    <div class="row">
+      <input id="input" type="text" placeholder="Drop your vibe!">
+    </div>
+    <div class="row">
+      <button onclick="send()">VIBE</button>
+      <div id="share" onclick="navigator.clipboard.writeText(location.href).then(() => alert('Link copied!'))">📢</div>
+    </div>
   </div>
   <div id="onlineCount">🟢 Loading...</div>
   <script>
@@ -127,6 +130,21 @@
     let comments = [];
     let particles = [];
 
+    const greetings = ["Hello", "こんにちは", "Salut", "Hola", "Ciao", "안녕하세요", "مرحبا", "Olá", "Hallo", "नमस्ते", "Привет", "你好", "שלום", "สวัสดี", "Hej"];
+    greetings.forEach((text, i) => {
+      setTimeout(() => {
+        comments.push({
+          text,
+          x: canvas.width,
+          y: Math.random() * (canvas.height - 200) + 100,
+          color: `hsl(${Math.random() * 360}, 100%, 70%)`,
+          speed: 2.5,
+          opacity: 1,
+          glitch: 0,
+        });
+      }, i * 300);
+    });
+
     function send() {
       const text = input.value.trim();
       if (!text) return;
@@ -141,40 +159,12 @@
       comments.push({
         text: data.text,
         x: canvas.width,
-        y: Math.random() * (canvas.height - 150),
+        y: Math.random() * (canvas.height - 200) + 100,
         color: `hsl(${hue}, 100%, 70%)`,
         speed: baseSpeed * (data.text.length * 0.1 + 0.5),
         opacity: 1,
         glitch: data.text.length > 10 ? 0.1 : 0,
       });
-
-      // 🔥エフェクト
-      for (let i = 0; i < 10; i++) {
-        particles.push({
-          x: canvas.width / 2,
-          y: canvas.height / 2,
-          vx: (Math.random() - 0.5) * 8,
-          vy: (Math.random() - 0.5) * 8,
-          size: Math.random() * 8 + 4,
-          color: '#ff4400',
-          life: 30
-        });
-      }
-    });
-
-    const greetings = ["Hello", "こんにちは", "Salut", "Hola", "Ciao", "안녕하세요", "مرحبا", "Olá", "Hallo", "नमस्ते", "Привет", "你好", "שלום", "สวัสดี", "Hej"];
-    greetings.forEach((text, i) => {
-      setTimeout(() => {
-        comments.push({
-          text,
-          x: canvas.width,
-          y: Math.random() * (canvas.height - 150),
-          color: `hsl(${Math.random() * 360}, 100%, 70%)`,
-          speed: 2.5,
-          opacity: 1,
-          glitch: 0,
-        });
-      }, i * 300);
     });
 
     function clamp(min, val, max) {
@@ -198,37 +188,11 @@
         ctx.fillText(c.text, offsetX, c.y);
         c.x -= c.speed;
 
-        if (Math.random() < 0.2) {
-          particles.push({
-            x: c.x + ctx.measureText(c.text).width,
-            y: c.y,
-            vx: -c.speed * 0.5,
-            vy: (Math.random() - 0.5) * 2,
-            size: clamp(2, c.speed * 0.5, 5),
-            color: c.color,
-            life: 30,
-          });
-        }
-
         if (c.x < -ctx.measureText(c.text).width) {
           c.opacity -= 0.02;
         }
         if (c.opacity <= 0) {
           comments.splice(i, 1);
-        }
-      });
-
-      particles.forEach((p, i) => {
-        ctx.globalAlpha = p.life / 30;
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life--;
-        if (p.life <= 0) {
-          particles.splice(i, 1);
         }
       });
 
@@ -246,7 +210,6 @@
       if (e.key === 'Enter') send();
     });
 
-    // 👥 同接人数カウント処理
     const userId = Math.random().toString(36).slice(2);
     const userRef = presenceRef.child(userId);
     firebase.database().ref(".info/connected").on("value", function(snap) {
