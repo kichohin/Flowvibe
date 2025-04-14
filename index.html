@@ -69,7 +69,7 @@
     }
     #share {
       flex: 1;
-      background: linear-gradient(45deg, #ff00ff, #00f6ff);
+      background: #fff;
       color: #000;
       border-radius: 25px;
       cursor: pointer;
@@ -129,6 +129,7 @@
 
     const input = document.getElementById('input');
     let comments = [];
+    let particles = [];
 
     function send() {
       const text = input.value.trim();
@@ -137,26 +138,9 @@
       input.value = '';
     }
 
-    // 世界のあいさつ（Hello）を初回のみ表示
-    const greetings = [
-      "Hello", "こんにちは", "Hola", "Bonjour", "Hallo", "Ciao", "안녕하세요", "你好",
-      "Здравствуйте", "Olá", "नमस्ते", "Hej", "שלום", "مرحبا", "สวัสดี"
-    ];
-    greetings.forEach((text, i) => {
-      setTimeout(() => {
-        comments.push({
-          text,
-          x: canvas.width,
-          y: Math.random() * (canvas.height - 200) + 100,
-          color: `hsl(${Math.random() * 360}, 100%, 70%)`,
-          speed: 2.5,
-          opacity: 1,
-          glitch: 0,
-        });
-      }, i * 300);
-    });
-
-    commentsRef.limitToLast(1).on('child_added', (snapshot) => {
+    let initialLoad = true;
+    commentsRef.on('child_added', (snapshot) => {
+      if (initialLoad) return;
       const data = snapshot.val();
       const hue = Math.floor(Math.random() * 360);
       comments.push({
@@ -169,6 +153,9 @@
         glitch: data.text.length > 10 ? 0.1 : 0,
       });
     });
+    setTimeout(() => {
+      initialLoad = false;
+    }, 1000);
 
     function clamp(min, val, max) {
       return Math.min(Math.max(val, min), max);
