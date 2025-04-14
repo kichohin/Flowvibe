@@ -73,6 +73,18 @@
       padding: 0.5em;
       box-shadow: 0 0 10px #00f6ff;
     }
+    #onlineCount {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      z-index: 11;
+      color: #00f6ff;
+      box-shadow: 0 0 10px #00f6ff;
+    }
     @media (max-width: 600px) {
       #ui {
         flex-direction: column;
@@ -89,6 +101,7 @@
     <button onclick="send()">VIBE</button>
     <div id="share" onclick="navigator.clipboard.writeText(location.href).then(() => alert('Link copied!'))">📢</div>
   </div>
+  <div id="onlineCount">🟢 Loading...</div>
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyCRmfI0ET6s8l3HLtUxNZ2jD-Q0u5Xlv0I",
@@ -103,6 +116,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const commentsRef = db.ref('comments');
+    const presenceRef = db.ref('presence');
 
     const canvas = document.getElementById('screen');
     const ctx = canvas.getContext('2d');
@@ -120,7 +134,7 @@
       input.value = '';
     }
 
-    commentsRef.on('child_added', (snapshot) => {
+    commentsRef.limitToLast(1).on('child_added', (snapshot) => {
       const data = snapshot.val();
       const baseSpeed = 2;
       const hue = Math.floor(Math.random() * 360);
@@ -133,6 +147,34 @@
         opacity: 1,
         glitch: data.text.length > 10 ? 0.1 : 0,
       });
+
+      // 🔥エフェクト
+      for (let i = 0; i < 10; i++) {
+        particles.push({
+          x: canvas.width / 2,
+          y: canvas.height / 2,
+          vx: (Math.random() - 0.5) * 8,
+          vy: (Math.random() - 0.5) * 8,
+          size: Math.random() * 8 + 4,
+          color: '#ff4400',
+          life: 30
+        });
+      }
+    });
+
+    const greetings = ["Hello", "こんにちは", "Salut", "Hola", "Ciao", "안녕하세요", "مرحبا", "Olá", "Hallo", "नमस्ते", "Привет", "你好", "שלום", "สวัสดี", "Hej"];
+    greetings.forEach((text, i) => {
+      setTimeout(() => {
+        comments.push({
+          text,
+          x: canvas.width,
+          y: Math.random() * (canvas.height - 150),
+          color: `hsl(${Math.random() * 360}, 100%, 70%)`,
+          speed: 2.5,
+          opacity: 1,
+          glitch: 0,
+        });
+      }, i * 300);
     });
 
     function clamp(min, val, max) {
@@ -202,6 +244,20 @@
     });
     input.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') send();
+    });
+
+    // 👥 同接人数カウント処理
+    const userId = Math.random().toString(36).slice(2);
+    const userRef = presenceRef.child(userId);
+    firebase.database().ref(".info/connected").on("value", function(snap) {
+      if (snap.val() === true) {
+        userRef.set(true);
+        userRef.onDisconnect().remove();
+      }
+    });
+
+    presenceRef.on("value", function(snapshot) {
+      document.getElementById("onlineCount").innerText = `🟢 ${snapshot.numChildren()} online`;
     });
   </script>
 </body>
