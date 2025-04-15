@@ -12,10 +12,13 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message: ', payload);
-  self.registration.showNotification(payload.notification.title, {
+self.addEventListener('push', function(event) {
+  const payload = event.data.json();
+  const title = payload.notification.title;
+  const options = {
     body: payload.notification.body,
-    icon: '/icon-192.png'
-  });
+    icon: 'icon-192.png',
+    badge: 'icon-192.png' // ✅ Chromeでアプリアイコンバッジに対応
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
 });
