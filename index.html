@@ -96,6 +96,7 @@
       display: flex;
       align-items: center;
       white-space: nowrap;
+      cursor: pointer;
     }
     #installBanner {
       position: fixed;
@@ -123,11 +124,20 @@
     </div>
   </div>
   <div id="onlineCount">
-    <div class="statusBox"><a id="aboutLink" href="about.html">🧠 About</a></div>
-    <div class="statusBox">🟢 <span id="onlineNum">Loading...</span></div>
+    <div class="statusBox" id="aboutLink" onclick="location.href='about.html'">🧠 About</div>
+    <div class="statusBox">🟢 <span id="onlineNum"> Loading...</span></div>
   </div>
   <div id="installBanner" style="display:none;">このサイトをホーム画面に追加して、通知を有効にしよう！📲</div>
+  <div id="signal">📡 Receiving vibe...</div>
   <script>
+    // Badge API（Chromeのみ）対応：人数をアイコンに表示
+    function updateBadge(count) {
+      if (navigator.setAppBadge) {
+        navigator.setAppBadge(count).catch(console.error);
+      }
+    }
+
+    // Firebase関連
     const firebaseConfig = {
       apiKey: "AIzaSyCRmfI0ET6s8l3HLtUxNZ2jD-Q0u5Xlv0I",
       authDomain: "flowvibeflowvibe.firebaseapp.com",
@@ -139,131 +149,12 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const messaging = firebase.messaging();
-    const commentsRef = db.ref('comments');
-    const presenceRef = db.ref('presence');
+    const presenceRef = db.ref("presence");
 
-    messaging.getToken({
-      vapidKey: "BLQBsfgQHeeKO38wJefCWi6eCJyjbsCqe6PmHsDqSJPj6tPLi66pcZ2qYHGE0m1ST8MUxSNfc8chgC3E6YiMLCI"
-    }).then(token => console.log("🔥 Push Token:", token));
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('firebase-messaging-sw.js')
-        .then(reg => {
-          messaging.useServiceWorker(reg);
-          console.log('✅ FCM Service Worker registered.');
-        });
-    }
-
-    messaging.onMessage(payload => {
-      if (Notification.permission === "granted") {
-        new Notification(payload.notification.title, {
-          body: payload.notification.body,
-          icon: 'icon-192.png'
-        });
-      }
-    });
-
-    const canvas = document.getElementById('screen');
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    const input = document.getElementById('input');
-    let comments = [];
-
-    function send() {
-      const text = input.value.trim();
-      if (!text) return;
-      commentsRef.push({ text });
-      input.value = '';
-    }
-
-    commentsRef.limitToLast(1).on('child_added', snapshot => {
-      const data = snapshot.val();
-      const baseSpeed = 2;
-      const hue = Math.floor(Math.random() * 360);
-      comments.push({
-        text: data.text,
-        x: canvas.width,
-        y: Math.random() * (canvas.height - 200) + 50,
-        color: `hsl(${hue}, 100%, 70%)`,
-        speed: baseSpeed * (data.text.length * 0.1 + 0.5),
-        opacity: 1,
-        isAuto: false
-      });
-    });
-
-    const worldWords = ["Hello", "Hope", "Freedom", "こんにちは", "共鳴中...", "🌍", "Peace"];
-    setInterval(() => {
-      const text = worldWords[Math.floor(Math.random() * worldWords.length)];
-      comments.push({ text, x: canvas.width, y: Math.random() * (canvas.height - 150), color: 'rgba(220, 220, 220, 0.6)', speed: 1.5, opacity: 1, isAuto: true });
-    }, 5 * 60 * 1000);
-
-    function clamp(min, val, max) {
-      return Math.min(Math.max(val, min), max);
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      comments.forEach((c, i) => {
-        ctx.globalAlpha = c.opacity;
-        ctx.font = `${c.isAuto ? 'italic ' : ''}${clamp(18, window.innerWidth * 0.03, 24)}px Poppins`;
-        ctx.fillStyle = c.color;
-        ctx.shadowColor = c.color;
-        ctx.shadowBlur = c.speed * 2;
-        ctx.fillText(c.text, c.x, c.y);
-        c.x -= c.speed;
-        if (c.x < -ctx.measureText(c.text).width) c.opacity -= 0.02;
-        if (c.opacity <= 0) comments.splice(i, 1);
-      });
-      requestAnimationFrame(draw);
-    }
-    draw();
-
-    window.addEventListener('resize', () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      document.getElementById('ui').style.bottom = window.innerHeight < 500 ? '30vh' : '5vh';
-    });
-
-    input.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') send();
-    });
-
-    const userId = Math.random().toString(36).slice(2);
-    const userRef = presenceRef.child(userId);
-    firebase.database().ref(".info/connected").on("value", snap => {
-      if (snap.val() === true) {
-        userRef.set(true);
-        userRef.onDisconnect().remove();
-      }
-    });
-
-    let lastCount = null;
-    presenceRef.on("value", snapshot => {
+    presenceRef.on("value", (snapshot) => {
       const count = snapshot.numChildren();
-      document.getElementById("onlineNum").innerText = `${count} online`;
-      if ('setAppBadge' in navigator) navigator.setAppBadge(count).catch(()=>{});
-      if (Notification.permission === "granted" && lastCount !== null && lastCount !== count) {
-        new Notification("FlowVibe Online", {
-          body: `${count} users now online!`,
-          icon: "icon-192.png"
-        });
-      }
-      lastCount = count;
-    });
-
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      document.getElementById('installBanner').style.display = 'block';
-      document.getElementById('installBanner').onclick = () => {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then(() => {
-          document.getElementById('installBanner').style.display = 'none';
-        });
-      };
+      document.getElementById("onlineNum").innerText = ` ${count} online`;
+      updateBadge(count);
     });
   </script>
 </body>
