@@ -164,6 +164,10 @@
   </div>
   <div id="signal">📡 Receiving vibe...</div>
   <script>
+    if ('Notification' in window && Notification.permission !== 'granted') {
+      Notification.requestPermission();
+    }
+
     setTimeout(() => {
       const intro = document.getElementById('intro-title');
       if (intro) intro.remove();
@@ -274,8 +278,23 @@
         userRef.onDisconnect().remove();
       }
     });
+
+    let lastOnlineCount = null;
     presenceRef.on("value", snapshot => {
-      document.getElementById("onlineNum").innerText = `${snapshot.numChildren()} online`;
+      const currentCount = snapshot.numChildren();
+      document.getElementById("onlineNum").innerText = `${currentCount} online`;
+
+      if (
+        Notification.permission === "granted" &&
+        lastOnlineCount !== null &&
+        currentCount !== lastOnlineCount
+      ) {
+        new Notification("FlowVibe - Online Status", {
+          body: `🟢 Now ${currentCount} users online!`,
+          icon: "icon-192.png"
+        });
+      }
+      lastOnlineCount = currentCount;
     });
 
     if ('serviceWorker' in navigator) {
