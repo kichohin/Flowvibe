@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="google-site-verification" content="IS5R6QqHrnM4XvkujgQazMNu7aIquYk3pc9VkK2V8RE" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>FlowVibe</title>
-  <link rel="icon" href="favicon.png" type="image/png">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="favicon.png" type="image/png"/>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet"/>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <style>
@@ -16,7 +15,6 @@
       font-family: 'Poppins', sans-serif;
       overflow: hidden;
       color: #fff;
-      position: relative;
     }
     canvas {
       display: block;
@@ -71,7 +69,7 @@
       flex: 1;
       background: #fff;
       color: #000;
-      border-radius: 25px;
+      border-radius: 50%;
       cursor: pointer;
       font-size: 1rem;
       padding: 0.8em;
@@ -92,13 +90,26 @@
       color: #00f6ff;
       box-shadow: 0 0 10px #00f6ff;
     }
+    #signal {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      padding: 6px 12px;
+      background: #333;
+      color: #ccc;
+      border-radius: 10px;
+      opacity: 0.85;
+      z-index: 999;
+      display: none;
+      font-size: 0.9rem;
+    }
   </style>
 </head>
 <body>
   <canvas id="screen"></canvas>
   <div id="ui">
     <div class="row">
-      <input id="input" type="text" placeholder="Drop your vibe!">
+      <input id="input" type="text" placeholder="Drop your vibe!"/>
     </div>
     <div class="row">
       <button onclick="send()">VIBE</button>
@@ -106,13 +117,15 @@
     </div>
   </div>
   <div id="onlineCount">🟢 Loading...</div>
+  <div id="signal">📡 Receiving vibe...</div>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyCRmfI0ET6s8l3HLtUxNZ2jD-Q0u5Xlv0I",
       authDomain: "flowvibeflowvibe.firebaseapp.com",
       projectId: "flowvibeflowvibe",
       databaseURL: "https://flowvibeflowvibe-default-rtdb.firebaseio.com",
-      storageBucket: "flowvibeflowvibe.firebasestorage.app",
+      storageBucket: "flowvibeflowvibe.appspot.com",
       messagingSenderId: "162683611275",
       appId: "1:162683611275:web:e9d530b92ece7c46a88c8e"
     };
@@ -129,7 +142,6 @@
 
     const input = document.getElementById('input');
     let comments = [];
-    let particles = [];
 
     function send() {
       const text = input.value.trim();
@@ -138,24 +150,40 @@
       input.value = '';
     }
 
-    let initialLoad = true;
-    commentsRef.on('child_added', (snapshot) => {
-      if (initialLoad) return;
+    commentsRef.limitToLast(1).on('child_added', (snapshot) => {
       const data = snapshot.val();
+      const baseSpeed = 2;
       const hue = Math.floor(Math.random() * 360);
       comments.push({
         text: data.text,
         x: canvas.width,
-        y: Math.random() * (canvas.height - 200) + 100,
+        y: Math.random() * (canvas.height - 200) + 50,
         color: `hsl(${hue}, 100%, 70%)`,
-        speed: 2 + data.text.length * 0.1,
+        speed: baseSpeed * (data.text.length * 0.1 + 0.5),
         opacity: 1,
         glitch: data.text.length > 10 ? 0.1 : 0,
+        isAuto: false
       });
     });
-    setTimeout(() => {
-      initialLoad = false;
-    }, 1000);
+
+    // 世界の波動コメントを5分ごとに流す
+    const worldWords = ["Hello", "Hope", "Freedom", "こんにちは", "共鳴中...", "🌍", "Peace"];
+    function pushWorldVibe() {
+      const text = worldWords[Math.floor(Math.random() * worldWords.length)];
+      comments.push({
+        text,
+        x: canvas.width,
+        y: Math.random() * (canvas.height - 150),
+        color: 'rgba(220, 220, 220, 0.6)', // グレー＆薄め
+        speed: 1.5,
+        opacity: 1,
+        isAuto: true
+      });
+      const signal = document.getElementById('signal');
+      signal.style.display = 'block';
+      setTimeout(() => signal.style.display = 'none', 4000);
+    }
+    setInterval(pushWorldVibe, 5 * 60 * 1000);
 
     function clamp(min, val, max) {
       return Math.min(Math.max(val, min), max);
@@ -163,29 +191,17 @@
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.font = `${clamp(18, window.innerWidth * 0.03, 24)}px Poppins`;
-
       comments.forEach((c, i) => {
         ctx.globalAlpha = c.opacity;
+        ctx.font = `${c.isAuto ? 'italic ' : ''}${clamp(18, window.innerWidth * 0.03, 24)}px Poppins`;
         ctx.fillStyle = c.color;
         ctx.shadowColor = c.color;
         ctx.shadowBlur = c.speed * 2;
-        let offsetX = c.x;
-        if (c.glitch && Math.random() < c.glitch) {
-          offsetX += (Math.random() - 0.5) * 10;
-          ctx.fillStyle = Math.random() < 0.5 ? '#ff00ff' : '#00f6ff';
-        }
-        ctx.fillText(c.text, offsetX, c.y);
+        ctx.fillText(c.text, c.x, c.y);
         c.x -= c.speed;
-
-        if (c.x < -ctx.measureText(c.text).width) {
-          c.opacity -= 0.02;
-        }
-        if (c.opacity <= 0) {
-          comments.splice(i, 1);
-        }
+        if (c.x < -ctx.measureText(c.text).width) c.opacity -= 0.02;
+        if (c.opacity <= 0) comments.splice(i, 1);
       });
-
       ctx.globalAlpha = 1;
       ctx.shadowBlur = 0;
       requestAnimationFrame(draw);
@@ -195,21 +211,23 @@
     window.addEventListener('resize', () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
+      document.getElementById('ui').style.bottom = window.innerHeight < 500 ? '30vh' : '5vh';
     });
+
     input.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') send();
     });
 
+    // 同接人数カウント
     const userId = Math.random().toString(36).slice(2);
     const userRef = presenceRef.child(userId);
-    firebase.database().ref(".info/connected").on("value", function(snap) {
+    firebase.database().ref(".info/connected").on("value", snap => {
       if (snap.val() === true) {
         userRef.set(true);
         userRef.onDisconnect().remove();
       }
     });
-
-    presenceRef.on("value", function(snapshot) {
+    presenceRef.on("value", snapshot => {
       document.getElementById("onlineCount").innerText = `🟢 ${snapshot.numChildren()} online`;
     });
   </script>
