@@ -110,9 +110,29 @@
       font-weight: bold;
       z-index: 9999;
     }
+    #intro-title {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 4rem;
+      font-weight: 700;
+      font-family: 'Poppins', sans-serif;
+      color: white;
+      text-shadow: 0 0 20px #ff00ff;
+      z-index: 99999;
+      opacity: 1;
+      animation: fadeOutZoom 3s ease-out forwards;
+    }
+    @keyframes fadeOutZoom {
+      0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      70% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
+    }
   </style>
 </head>
 <body>
+  <div id="intro-title">FLOWVIBE</div>
   <canvas id="screen"></canvas>
   <div id="ui">
     <div class="row">
@@ -128,16 +148,13 @@
     <div class="statusBox">🟢 <span id="onlineNum"> Loading...</span></div>
   </div>
   <div id="installBanner" style="display:none;">このサイトをホーム画面に追加して、通知を有効にしよう！📲</div>
-  <div id="signal">📡 Receiving vibe...</div>
-  <script>
-    // Badge API（Chromeのみ）対応：人数をアイコンに表示
-    function updateBadge(count) {
-      if (navigator.setAppBadge) {
-        navigator.setAppBadge(count).catch(console.error);
-      }
-    }
 
-    // Firebase関連
+  <script>
+    setTimeout(() => {
+      const intro = document.getElementById('intro-title');
+      if (intro) intro.remove();
+    }, 3500);
+
     const firebaseConfig = {
       apiKey: "AIzaSyCRmfI0ET6s8l3HLtUxNZ2jD-Q0u5Xlv0I",
       authDomain: "flowvibeflowvibe.firebaseapp.com",
@@ -150,6 +167,87 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const presenceRef = db.ref("presence");
+    const commentsRef = db.ref("comments");
+
+    function send() {
+      const input = document.getElementById("input");
+      const text = input.value.trim();
+      if (!text) return;
+      commentsRef.push({ text });
+      input.value = "";
+    }
+
+    const canvas = document.getElementById('screen');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let comments = [];
+
+    commentsRef.limitToLast(1).on('child_added', (snapshot) => {
+      const data = snapshot.val();
+      const baseSpeed = 2;
+      const hue = Math.floor(Math.random() * 360);
+      comments.push({
+        text: data.text,
+        x: canvas.width,
+        y: Math.random() * (canvas.height - 200) + 50,
+        color: `hsl(${hue}, 100%, 70%)`,
+        speed: baseSpeed * (data.text.length * 0.1 + 0.5),
+        opacity: 1,
+        glitch: data.text.length > 10 ? 0.1 : 0,
+        isAuto: false
+      });
+    });
+
+    function clamp(min, val, max) {
+      return Math.min(Math.max(val, min), max);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      comments.forEach((c, i) => {
+        ctx.globalAlpha = c.opacity;
+        ctx.font = `${c.isAuto ? 'italic ' : ''}${clamp(18, window.innerWidth * 0.03, 24)}px Poppins`;
+        ctx.fillStyle = c.color;
+        ctx.shadowColor = c.color;
+        ctx.shadowBlur = c.speed * 2;
+        ctx.fillText(c.text, c.x, c.y);
+        c.x -= c.speed;
+        if (c.x < -ctx.measureText(c.text).width) c.opacity -= 0.02;
+        if (c.opacity <= 0) comments.splice(i, 1);
+      });
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
+      requestAnimationFrame(draw);
+    }
+
+    draw();
+
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      document.getElementById('ui').style.bottom = window.innerHeight < 500 ? '30vh' : '5vh';
+    });
+
+    document.getElementById("input").addEventListener("keypress", function(e) {
+      if (e.key === "Enter") send();
+    });
+
+    const userId = Math.random().toString(36).slice(2);
+    const userRef = presenceRef.child(userId);
+    firebase.database().ref(".info/connected").on("value", snap => {
+      if (snap.val() === true) {
+        userRef.set(true);
+        userRef.onDisconnect().remove();
+      }
+    });
+
+    function updateBadge(count) {
+      if (navigator.setAppBadge) {
+        navigator.setAppBadge(count).catch(console.error);
+      }
+    }
 
     presenceRef.on("value", (snapshot) => {
       const count = snapshot.numChildren();
