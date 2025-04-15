@@ -69,7 +69,7 @@
       flex: 1;
       background: #fff;
       color: #000;
-      border-radius: 50%;
+      border-radius: 25px;
       cursor: pointer;
       font-size: 1rem;
       padding: 0.8em;
@@ -77,18 +77,38 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      font-weight: bold;
     }
     #onlineCount {
       position: fixed;
       top: 10px;
       right: 10px;
+      display: flex;
+      gap: 10px;
+      z-index: 11;
+    }
+    .statusBox {
       background: rgba(0, 0, 0, 0.5);
-      padding: 8px 16px;
+      padding: 6px 14px;
       border-radius: 20px;
       font-size: 0.9rem;
-      z-index: 11;
       color: #00f6ff;
       box-shadow: 0 0 10px #00f6ff;
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+    }
+    #aboutLink {
+      color: #00f6ff;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: normal;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    #aboutLink:hover {
+      opacity: 0.7;
     }
     #signal {
       position: fixed;
@@ -103,9 +123,29 @@
       display: none;
       font-size: 0.9rem;
     }
+    #intro-title {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 4rem;
+      font-weight: 700;
+      font-family: 'Poppins', sans-serif;
+      color: white;
+      text-shadow: 0 0 20px #ff00ff;
+      z-index: 99999;
+      opacity: 1;
+      animation: fadeOutZoom 3s ease-out forwards;
+    }
+    @keyframes fadeOutZoom {
+      0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      70% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
+    }
   </style>
 </head>
 <body>
+  <div id="intro-title">FLOWVIBE</div>
   <canvas id="screen"></canvas>
   <div id="ui">
     <div class="row">
@@ -116,10 +156,18 @@
       <div id="share" onclick="navigator.clipboard.writeText(location.href).then(() => alert('Link copied!'))">📢</div>
     </div>
   </div>
-  <div id="onlineCount">🟢 Loading...</div>
+  <div id="onlineCount">
+    <div class="statusBox"><a id="aboutLink" href="/about.html">🧠 About</a></div>
+    <div class="statusBox">🟢 <span id="onlineNum">Loading...</span></div>
+  </div>
   <div id="signal">📡 Receiving vibe...</div>
 
   <script>
+    setTimeout(() => {
+      const intro = document.getElementById('intro-title');
+      if (intro) intro.remove();
+    }, 3500);
+
     const firebaseConfig = {
       apiKey: "AIzaSyCRmfI0ET6s8l3HLtUxNZ2jD-Q0u5Xlv0I",
       authDomain: "flowvibeflowvibe.firebaseapp.com",
@@ -166,7 +214,6 @@
       });
     });
 
-    // 世界の波動コメントを5分ごとに流す
     const worldWords = ["Hello", "Hope", "Freedom", "こんにちは", "共鳴中...", "🌍", "Peace"];
     function pushWorldVibe() {
       const text = worldWords[Math.floor(Math.random() * worldWords.length)];
@@ -174,7 +221,7 @@
         text,
         x: canvas.width,
         y: Math.random() * (canvas.height - 150),
-        color: 'rgba(220, 220, 220, 0.6)', // グレー＆薄め
+        color: 'rgba(220, 220, 220, 0.6)',
         speed: 1.5,
         opacity: 1,
         isAuto: true
@@ -218,7 +265,6 @@
       if (e.key === 'Enter') send();
     });
 
-    // 同接人数カウント
     const userId = Math.random().toString(36).slice(2);
     const userRef = presenceRef.child(userId);
     firebase.database().ref(".info/connected").on("value", snap => {
@@ -228,7 +274,7 @@
       }
     });
     presenceRef.on("value", snapshot => {
-      document.getElementById("onlineCount").innerText = `🟢 ${snapshot.numChildren()} online`;
+      document.getElementById("onlineNum").innerText = `${snapshot.numChildren()} online`;
     });
   </script>
 </body>
