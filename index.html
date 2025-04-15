@@ -4,7 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>FlowVibe</title>
-  <link rel="icon" href="favicon.png" type="image/png"/>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#ff00ff" />
+  <link rel="icon" href="icon-192.png" type="image/png" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet"/>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
@@ -157,11 +159,10 @@
     </div>
   </div>
   <div id="onlineCount">
-    <div class="statusBox"><a id="aboutLink" href="./about.html">🧠 About</a></div>
+    <div class="statusBox"><a id="aboutLink" href="/about.html">🧠 About</a></div>
     <div class="statusBox">🟢 <span id="onlineNum">Loading...</span></div>
   </div>
   <div id="signal">📡 Receiving vibe...</div>
-
   <script>
     setTimeout(() => {
       const intro = document.getElementById('intro-title');
@@ -276,6 +277,14 @@
     presenceRef.on("value", snapshot => {
       document.getElementById("onlineNum").innerText = `${snapshot.numChildren()} online`;
     });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('✅ Service Worker registered:', reg.scope))
+          .catch(err => console.log('❌ Service Worker registration failed:', err));
+      });
+    }
   </script>
 </body>
 </html>
