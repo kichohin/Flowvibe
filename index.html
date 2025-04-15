@@ -2,17 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FlowVibe</title>
+
+  <!-- PWA & アイコン -->
   <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#2c2c2c" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#ff00ff" />
   <link rel="icon" href="icon-192.png" type="image/png" />
-  <link rel="apple-touch-icon" href="icon-192.png">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet"/>
+  <link rel="apple-touch-icon" href="icon-192.png" />
+
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-messaging-compat.js"></script>
+
+  <!-- フォント -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet"/>
+
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -20,7 +26,6 @@
       font-family: 'Poppins', sans-serif;
       overflow: hidden;
       color: #fff;
-      padding-top: env(safe-area-inset-top);
     }
     canvas {
       display: block;
@@ -85,19 +90,6 @@
       justify-content: center;
       font-weight: bold;
     }
-    #installBtn {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: #ff00ff;
-      color: white;
-      padding: 10px 20px;
-      border-radius: 25px;
-      font-weight: bold;
-      border: none;
-      z-index: 999;
-      display: none;
-    }
     #onlineCount {
       position: fixed;
       top: 10px;
@@ -125,6 +117,9 @@
       display: flex;
       align-items: center;
       gap: 4px;
+    }
+    #aboutLink:hover {
+      opacity: 0.7;
     }
     #signal {
       position: fixed;
@@ -172,7 +167,6 @@
       <div id="share" onclick="navigator.clipboard.writeText(location.href).then(() => alert('Link copied!'))">📢</div>
     </div>
   </div>
-  <button id="installBtn">Install FlowVibe</button>
   <div id="onlineCount">
     <div class="statusBox"><a id="aboutLink" href="about.html">🧠 About</a></div>
     <div class="statusBox">🟢 <span id="onlineNum">Loading...</span></div>
@@ -180,32 +174,6 @@
   <div id="signal">📡 Receiving vibe...</div>
 
   <script>
-    let deferredPrompt;
-    const installBtn = document.getElementById("installBtn");
-
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      installBtn.style.display = 'block';
-    });
-
-    installBtn.addEventListener('click', () => {
-      installBtn.style.display = 'none';
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then(choice => {
-          if (choice.outcome === 'accepted') {
-            console.log('PWA installed');
-          }
-          deferredPrompt = null;
-        });
-      }
-    });
-
-    if ('Notification' in window && Notification.permission !== 'granted') {
-      Notification.requestPermission();
-    }
-
     const firebaseConfig = {
       apiKey: "AIzaSyCRmfI0ET6s8l3HLtUxNZ2jD-Q0u5Xlv0I",
       authDomain: "flowvibeflowvibe.firebaseapp.com",
@@ -215,11 +183,37 @@
       messagingSenderId: "162683611275",
       appId: "1:162683611275:web:e9d530b92ece7c46a88c8e"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const messaging = firebase.messaging();
     const commentsRef = db.ref('comments');
     const presenceRef = db.ref('presence');
+
+    // 通知許可とトークン取得
+    messaging.getToken({
+      vapidKey: "BLQBsfgQHeeKO38wJefCWi6eCJyjbsCqe6PmHsDqSJPj6tPLi66pcZ2qYHGE0m1ST8MUxSNfc8chgC3E6YiMLCI"
+    }).then(token => {
+      console.log("🔥 Push Token:", token);
+    }).catch(err => console.error("⚠️ Token error", err));
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('firebase-messaging-sw.js')
+        .then(reg => {
+          messaging.useServiceWorker(reg);
+          console.log('✅ FCM Service Worker registered.');
+        });
+    }
+
+    // 通知表示
+    messaging.onMessage(payload => {
+      console.log("📩 Message received: ", payload);
+      if (Notification.permission === "granted") {
+        new Notification(payload.notification.title, {
+          body: payload.notification.body,
+          icon: 'icon-192.png'
+        });
+      }
+    });
 
     const canvas = document.getElementById('screen');
     const ctx = canvas.getContext('2d');
@@ -250,13 +244,6 @@
         glitch: data.text.length > 10 ? 0.1 : 0,
         isAuto: false
       });
-
-      if (Notification.permission === "granted") {
-        new Notification("New Vibe!", {
-          body: data.text,
-          icon: "icon-192.png"
-        });
-      }
     });
 
     const worldWords = ["Hello", "Hope", "Freedom", "こんにちは", "共鳴中...", "🌍", "Peace"];
@@ -318,17 +305,24 @@
         userRef.onDisconnect().remove();
       }
     });
-    presenceRef.on("value", snapshot => {
-      document.getElementById("onlineNum").innerText = `${snapshot.numChildren()} online`;
-    });
 
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then(reg => console.log('✅ Service Worker registered:', reg.scope))
-          .catch(err => console.log('❌ Service Worker registration failed:', err));
-      });
-    }
+    let lastOnlineCount = null;
+    presenceRef.on("value", snapshot => {
+      const currentCount = snapshot.numChildren();
+      document.getElementById("onlineNum").innerText = `${currentCount} online`;
+
+      if (
+        Notification.permission === "granted" &&
+        lastOnlineCount !== null &&
+        currentCount !== lastOnlineCount
+      ) {
+        new Notification("FlowVibe - Online Status", {
+          body: `🟢 Now ${currentCount} users online!`,
+          icon: "icon-192.png"
+        });
+      }
+      lastOnlineCount = currentCount;
+    });
   </script>
 </body>
 </html>
