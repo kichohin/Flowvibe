@@ -254,6 +254,22 @@
       document.getElementById("onlineNum").innerText = ` ${count} online`;
       updateBadge(count);
     });
+
+    const autoWords = ["🌏🌏🌏🌏🌏", "🌎🌎🌎🌎🌎", "🧠🧠🧠", "🔥🔥🔥🔥🔥", "🌐🌐🌐🌐🌐", "💋💋💋", "⚡️⚡️⚡️⚡️⚡️", "❤️❤️❤️", "☁️☁️☁️", "💡💡💡💡💡", "⚠️⚠️⚠️⚠️⚠️"];
+  
+    setInterval(() => {
+      const word = autoWords[Math.floor(Math.random() * autoWords.length)];
+      comments.push({
+        text: word,
+        x: canvas.width,
+        y: Math.random() * (canvas.height - 200) + 50,
+        color: "#888888",
+        speed: 2,
+        opacity: 1,
+        isAuto: true
+      });
+    }, 10000); // 5分ごとに流す（＝300,000ミリ秒）
+
   </script>
 </body>
 </html>
